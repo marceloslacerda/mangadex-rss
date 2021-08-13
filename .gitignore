@@ -1,0 +1,6 @@
+venv/
+token.txt
+cache.bin
+.idea/
+__pycache__/
+rss.xml
