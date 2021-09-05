@@ -106,9 +106,12 @@ def main():
         if entry["chapter_vol"]:
             title = f"Volume {entry['chapter_vol']}, " + title
         fe.title(title)
-        chapter_title = f" ({entry['chapter_title']})"
+        if entry['chapter_title']:
+            chapter_title = f"'{entry['chapter_title']}'"
+        else:
+            chapter_title = entry['chapter_no']
         fe.description(
-            f"""A new chapter{chapter_title} of
+            f"""Chapter {chapter_title} of
         <a href="https://mangadex.org/manga/{entry['manga_id']}">{entry['manga_title']}</a>
         was released. <a href='{chapter_url}'>Link</a>."""
         )
