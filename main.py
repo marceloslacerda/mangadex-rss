@@ -23,8 +23,8 @@ def get_unread_manga(cache):
     ).json()
     chapters = []
     for chapter in resp["results"]:
+        chapter_no = int(chapter["data"]["attributes"]["chapter"])
         if chapter["data"]["attributes"]["translatedLanguage"] in LANGUAGES:
-
             manga_id = [
                 r["id"] for r in chapter["relationships"] if r["type"] == "manga"
             ][0]
@@ -34,11 +34,25 @@ def get_unread_manga(cache):
                 cache["manga"][manga_id] = mdata
             else:
                 mdata = cache["manga"][manga_id]
+            # if latest chapter not in mdata add to it
+            if 'latest_chapter' not in mdata:
+                result = session.get(f"https://api.mangadex.org/manga/{manga_id}/aggregate",
+                                     params={"translatedLanguage[]": LANGUAGES[0]}).json()
+                latest_volume = max(int(key) for key in result['volumes'].keys())
+                latest_chapter_no = max(int(key) for key in result['volumes'][latest_volume]['chapters'].keys())
+                mdata['latest_chapter'] = {'chapter_no': int(latest_chapter_no),
+                                           'chapter_id': result['volumes'][latest_volume]['chapters'][latest_chapter_no]['id']
+                                           }
+            # todo deal with missing chapters
+            # todo deal with deleted chapters
             if chapter_id not in cache["chapters"]:
                 chapdata = session.get(
                     "https://api.mangadex.org/chapter/" + chapter_id
                 ).json()
                 cache["chapters"][chapter_id] = chapdata
+                if mdata['latest_chapter']['chapter_no'] < chapter_no:
+                    mdata['latest_chapter']['chapter_id'] = chapter_id
+                    mdata['latest_chapter']['chapter_no'] = chapter_no
             else:
                 chapdata = cache["chapters"][chapter_id]
             chapters.append(
@@ -47,10 +61,11 @@ def get_unread_manga(cache):
                     "manga_title": list(mdata["data"]["attributes"]["title"].values())[
                         0
                     ],
-                    "chapter_no": chapter["data"]["attributes"]["chapter"],
+                    "chapter_no": chapter_no,
                     "chapter_vol": chapter["data"]["attributes"]["volume"],
                     "chapter_id": chapter_id,
                     "chapter_title": chapdata["data"]["attributes"]["title"],
+                    "latest_chapter": mdata["latest_chapter"]
                 }
             )
     return chapters
@@ -91,7 +106,6 @@ def main():
     fg.link(href="https://mangadex.org", rel="alternate")
     fg.logo("https://mangadex.org/favicon.svg")
     fg.subtitle("Mangadex User Feed")
-    #  fg.link(href='http://larskiesow.de/test.atom', rel='self')
     fg.language("en")
     if CACHE_PATH.exists():
         cache = pickle.load(CACHE_PATH.open("rb"))
@@ -107,11 +121,21 @@ def main():
             title = f"Volume {entry['chapter_vol']}, " + title
         fe.title(title)
         chapter_title = f" ({entry['chapter_title']})"
-        fe.description(
-            f"""A new chapter{chapter_title} of
-        <a href="https://mangadex.org/manga/{entry['manga_id']}">{entry['manga_title']}</a>
-        was released. <a href='{chapter_url}'>Link</a>."""
-        )
+        if entry['latest_chapter']['chapter_no'] > entry['chapter_no']:
+            latest_chap_no = entry['latest_chapter']['chapter_no']
+            latest_chap_id = entry['latest_chapter']['chapter_id']
+            fe.description(
+                f"""An old chapter <a href='{chapter_url}'>{chapter_title}</a> of
+                        <a href="https://mangadex.org/manga/{entry['manga_id']}">{entry['manga_title']}</a>
+                        was released. Latest: <a href="https://mangadex.org/manga/{latest_chap_id}">{latest_chap_no}"""
+            )
+            fe.title(title + " (old)")
+        else:
+            fe.description(
+                f"""A new chapter <a href='{chapter_url}'>{chapter_title}</a> of
+            <a href="https://mangadex.org/manga/{entry['manga_id']}">{entry['manga_title']}</a>
+            was released."""
+            )
         fe.link(href=f"https://mangadex.org/chapter/{entry['chapter_id']}/1")
     fg.rss_file(FEED_PATH)
     pickle.dump(cache, CACHE_PATH.open("wb"))
