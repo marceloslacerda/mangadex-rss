@@ -2,7 +2,9 @@ import os
 import pathlib
 import requests
 import pickle
+
 from urllib.parse import urljoin
+import xml.etree.ElementTree as ET
 
 from feedgen.feed import FeedGenerator
 
@@ -67,6 +69,8 @@ def get_unread_manga(cache):
             r["id"] for r in update["relationships"] if r["type"] == "manga"
         )
         chapter_id = update["id"]
+        if chapter_id in cache["chapters"]:
+            continue
         if manga_id not in cache["manga"]:
             mdata = get_api_method(session, "manga/" + manga_id)
             cache["manga"][manga_id] = mdata
@@ -172,8 +176,32 @@ def main():
                 "was released."
             )
         fe.link(href=f"https://mangadex.org/chapter/{entry['chapter_id']}/1")
-    fg.rss_file(FEED_PATH)
+    write_rss(fg)
     pickle.dump(cache, CACHE_PATH.open("wb"))
+
+
+def write_rss(fg):
+    try:
+        with open(FEED_PATH, "r") as feed_file:
+            if not fg.entry():
+                return
+            feed_str = str(fg.rss_str(), "utf-8")
+            old_str = feed_file.read()
+            old_begin_idx = old_str.find("<item>")
+            if old_begin_idx == -1:
+                fg.rss_file(FEED_PATH)
+                return
+            old_end_idx = old_str.rfind("</item>") + 7
+            new_end_idx = feed_str.find("</item>") + 7
+            new_str = (
+                feed_str[:new_end_idx]
+                + old_str[old_begin_idx:old_end_idx]
+                + feed_str[new_end_idx:]
+            )
+        with open(FEED_PATH, "w") as feed_file:
+            feed_file.write(new_str)
+    except FileNotFoundError:
+        fg.rss_file(FEED_PATH)
 
 
 def parse_tup_to_chapter(tup):
