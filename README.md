@@ -9,7 +9,7 @@ git clone https://github.com/marceloslacerda/mangadex-rss
 cd mangadex-rss
 
 # Install the requirements
-pip  install requirements.txt
+pip install -r requirements.txt
 
 # Set your mangadex credentials
 export username=myusername
