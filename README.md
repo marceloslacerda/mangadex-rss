@@ -21,7 +21,7 @@ A mangadex rss generator for the new site (v5)
    export username=myusername
    export password=mypassword
    ```
-4. *(OPTIONAL)* Set where the generator should put the generated feed file.
+4. [OPTIONAL] Set where the generator should put the generated feed file.
    ```bash
    export feed_file=/var/www/html/manga-feed.rss
    ```
