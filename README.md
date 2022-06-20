@@ -26,7 +26,11 @@ A mangadex rss generator for the new site (v5)
    export feed_file=/var/www/html/manga-feed.rss
    ```
 
-5. Run.
+5. [OPTIONAL] Set which languages to filter.
+   ```bash
+   export languages='en,es'
+   ```
+6. Run.
    ```bash
    python main.py
    ```

@@ -4,16 +4,25 @@ import requests
 import pickle
 
 from urllib.parse import urljoin
-import xml.etree.ElementTree as ET
 
 from feedgen.feed import FeedGenerator
 
 CACHE_PATH = pathlib.Path("cache.bin")
 FETCH_LIMIT = 10
 TOKEN_PATH = pathlib.Path("token.txt")
-USERNAME = os.environ["username"]
-PASSWORD = os.environ["password"]
-LANGUAGES = ["en"]
+try:
+    USERNAME = os.environ["username"]
+    PASSWORD = os.environ["password"]
+except KeyError:
+    print(
+        "Either and/or the username or password environment variable was not"
+        " set. Please read the README.md for more information."
+    )
+    exit(1)
+
+LANGUAGES = list(
+    l.strip() for l in os.environ.get("languages", "en").split(",") if l.strip()
+)
 FEED_PATH = os.environ.get("feed_file", "rss.xml")
 
 
@@ -53,6 +62,8 @@ def parse_chapter_to_tup(txt):
     except ValueError:
         if "." in txt:
             return tuple(int(x) for x in txt.split("."))
+        else:
+            raise ValueError(f'The chapter "number" {txt} has an unexpected character')
 
 
 def get_unread_manga(cache):
