@@ -1,5 +1,7 @@
 import os
 import pathlib
+import sys
+
 import requests
 import pickle
 
@@ -44,9 +46,16 @@ def get_latest_chapter(session, manga_id):
     chapters = {}
     for volume in result["volumes"].values():
         for chapter_no in volume["chapters"]:
-            chapters[parse_chapter_to_tup(chapter_no)] = volume["chapters"][chapter_no][
-                "id"
-            ]
+            try:
+                chapters[parse_chapter_to_tup(chapter_no)] = volume["chapters"][
+                    chapter_no
+                ]["id"]
+            except ValueError:
+                print(
+                    f"Error parsing chapter {chapter_no} of volume {volume} of"
+                    f" manga with id {manga_id}",
+                    file=sys.stderr,
+                )
     latest_chapter_no = max(chapters)
     return {
         "chapter_no": latest_chapter_no,
@@ -63,7 +72,7 @@ def parse_chapter_to_tup(txt):
         if "." in txt:
             return tuple(int(x) for x in txt.split("."))
         else:
-            raise ValueError(f'The chapter "number" {txt} has an unexpected character')
+            raise
 
 
 def get_unread_manga(cache):
