@@ -21,16 +21,17 @@ A mangadex rss generator for the new site (v5)
    export username=myusername
    export password=mypassword
    ```
-4. [OPTIONAL] Set where the generator should put the generated feed file.
+4. [OPTIONAL] Set some other environment variables to customize the behavior.
    ```bash
+   # This sets the generator should put the generated feed file.
    export feed_file=/var/www/html/manga-feed.rss
+   # Set which languages to filter.
+   export languages='en,es'
+   # Set how many chapters to fetch per run (default 10)
+   export fetch_limit=20
    ```
 
-5. [OPTIONAL] Set which languages to filter.
-   ```bash
-   export languages='en,es'
-   ```
-6. Run.
+5. Run.
    ```bash
    python main.py
    ```

@@ -1,16 +1,21 @@
 import os
 import pathlib
-import sys
+import pickle
+import logging
 
 import requests
-import pickle
 
 from urllib.parse import urljoin
 
 from feedgen.feed import FeedGenerator
 
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=os.environ.get("loglevel", "WARNING"),
+    force=True,
+)
+
 CACHE_PATH = pathlib.Path("cache.bin")
-FETCH_LIMIT = 10
 TOKEN_PATH = pathlib.Path("token.txt")
 try:
     USERNAME = os.environ["username"]
@@ -25,6 +30,7 @@ except KeyError:
 LANGUAGES = list(
     l.strip() for l in os.environ.get("languages", "en").split(",") if l.strip()
 )
+FETCH_LIMIT = os.environ.get("fetch_limit", 10)
 FEED_PATH = os.environ.get("feed_file", "rss.xml")
 
 
@@ -51,10 +57,9 @@ def get_latest_chapter(session, manga_id):
                     chapter_no
                 ]["id"]
             except ValueError:
-                print(
+                logging.error(
                     f"Error parsing chapter {chapter_no} of volume {volume} of"
-                    f" manga with id {manga_id}",
-                    file=sys.stderr,
+                    f" manga with id {manga_id}"
                 )
     latest_chapter_no = max(chapters)
     return {
@@ -71,17 +76,21 @@ def parse_chapter_to_tup(txt):
     except ValueError:
         if "." in txt:
             return tuple(int(x) for x in txt.split("."))
+        if txt == "none":  # At least one oneshot has this behavior
+            return (-1,)
         else:
             raise
 
 
 def get_unread_manga(cache):
     session = get_session(USERNAME, PASSWORD)
+    logging.debug("Session obtained")
     updates = get_api_method(
         session,
         "user/follows/manga/feed",
         {"translatedLanguage[]": LANGUAGES[0], "limit": FETCH_LIMIT},
     )["data"]
+    logging.debug(f"Feed payload:\n{updates}")
     results = []
     for update in updates:
         chapter_no = parse_chapter_to_tup(update["attributes"]["chapter"])
@@ -123,15 +132,16 @@ def get_unread_manga(cache):
 
 
 def get_session(username, password):
+    logging.debug("Getting an open session")
     s = requests.Session()
     if not TOKEN_PATH.exists():
         try:
-            resposnse = s.post(
+            response = s.post(
                 "https://api.mangadex.org/auth/login",
                 json={"username": username, "password": password},
             )
-            resposnse.raise_for_status()
-            jwt = resposnse.json()["token"]
+            response.raise_for_status()
+            jwt = response.json()["token"]
             TOKEN_PATH.write_text(jwt["refresh"])
             s.headers.update({"Authorization": jwt["session"]})
             return s
@@ -140,12 +150,12 @@ def get_session(username, password):
             raise
     else:
         try:
-            resposnse = s.post(
+            response = s.post(
                 "https://api.mangadex.org/auth/refresh",
                 json={"token": TOKEN_PATH.read_text()},
             )
-            resposnse.raise_for_status()
-            jwt = resposnse.json()["token"]
+            response.raise_for_status()
+            jwt = response.json()["token"]
             s.headers.update({"Authorization": jwt["session"]})
             return s
         except requests.exceptions.HTTPError:
@@ -162,6 +172,7 @@ def main():
     fg.logo("https://mangadex.org/favicon.svg")
     fg.subtitle("Mangadex User Feed")
     fg.language("en")
+    logging.debug("Starting up")
     if CACHE_PATH.exists():
         cache = pickle.load(CACHE_PATH.open("rb"))
     else:
