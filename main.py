@@ -126,6 +126,7 @@ def get_unread_manga(cache):
                 "chapter_id": chapter_id,
                 "chapter_title": chapdata["data"]["attributes"]["title"],
                 "latest_chapter": mdata["latest_chapter"],
+                "official": update["attributes"]["externalUrl"]
             }
         )
     return results
@@ -194,18 +195,21 @@ def main():
         if entry["latest_chapter"]["chapter_no"] > entry["chapter_no"]:
             latest_chap_no = parse_tup_to_chapter(entry["latest_chapter"]["chapter_no"])
             latest_chap_id = entry["latest_chapter"]["chapter_id"]
-            fe.description(
+            description = (
                 f"An old chapter <a href='{chapter_url}'>{chapter_title}</a> of"
                 f' <a href="https://mangadex.org/manga/{entry["manga_id"]}">{entry["manga_title"]}</a>'
-                f' was released. Latest: <a href="https://mangadex.org/manga/{latest_chap_id}">{latest_chap_no}'
+                f' was released. Latest: <a href="https://mangadex.org/manga/{latest_chap_id}">{latest_chap_no}</a>'
             )
             fe.title(title + " (old)")
         else:
-            fe.description(
+            description = (
                 f"A new chapter <a href='{chapter_url}'>{chapter_title}</a> of"
                 f' <a href="https://mangadex.org/manga/{entry["manga_id"]}">{entry["manga_title"]}</a>'
                 "was released."
             )
+        if entry["official"]:
+            description += f'<br/>Official publisher <a href="{entry["official"]}">link</a>'
+        fe.description(description)
         fe.link(href=f"https://mangadex.org/chapter/{entry['chapter_id']}/1")
     write_rss(fg)
     pickle.dump(cache, CACHE_PATH.open("wb"))
