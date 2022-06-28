@@ -3,9 +3,9 @@ import pathlib
 import pickle
 import logging
 
-import requests
-
 from urllib.parse import urljoin
+
+import requests
 
 from feedgen.feed import FeedGenerator
 
@@ -58,8 +58,8 @@ def get_latest_chapter(session, manga_id):
                 ]["id"]
             except ValueError:
                 logging.error(
-                    f"Error parsing chapter {chapter_no} of volume {volume} of"
-                    f" manga with id {manga_id}"
+                    "Error parsing chapter %s of volume %s of"
+                    " manga with id %s", chapter_no, volume, manga_id
                 )
     latest_chapter_no = max(chapters)
     return {
@@ -90,7 +90,7 @@ def get_unread_manga(cache):
         "user/follows/manga/feed",
         {"translatedLanguage[]": LANGUAGES[0], "limit": FETCH_LIMIT},
     )["data"]
-    logging.debug(f"Feed payload:\n{updates}")
+    logging.debug("Feed payload:\n%s", updates)
     results = []
     for update in updates:
         chapter_no = parse_chapter_to_tup(update["attributes"]["chapter"])
