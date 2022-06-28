@@ -87,10 +87,12 @@ def parse_chapter_to_tup(txt):
 def get_unread_manga(cache):
     session = get_session(USERNAME, PASSWORD)
     logging.debug("Session obtained")
+    payload = {"limit": FETCH_LIMIT, "order[createdAt]": "desc"}
+    payload.update({"translatedLanguage[]": language for language in LANGUAGES})
     updates = get_api_method(
         session,
         "user/follows/manga/feed",
-        {"translatedLanguage[]": LANGUAGES[0], "limit": FETCH_LIMIT},
+        payload,
     )["data"]
     logging.debug("Feed payload:\n%s", updates)
     results = []
