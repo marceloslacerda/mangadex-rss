@@ -58,8 +58,10 @@ def get_latest_chapter(session, manga_id):
                 ]["id"]
             except ValueError:
                 logging.error(
-                    "Error parsing chapter %s of volume %s of"
-                    " manga with id %s", chapter_no, volume, manga_id
+                    "Error parsing chapter %s of volume %s of" " manga with id %s",
+                    chapter_no,
+                    volume,
+                    manga_id,
                 )
     latest_chapter_no = max(chapters)
     return {
@@ -126,7 +128,8 @@ def get_unread_manga(cache):
                 "chapter_id": chapter_id,
                 "chapter_title": chapdata["data"]["attributes"]["title"],
                 "latest_chapter": mdata["latest_chapter"],
-                "official": update["attributes"]["externalUrl"]
+                "official": update["attributes"]["externalUrl"],
+                "created_at": chapdata["data"]["attributes"]["createdAt"],
             }
         )
     return results
@@ -208,9 +211,14 @@ def main():
                 "was released."
             )
         if entry["official"]:
-            description += f'<br/>Official publisher <a href="{entry["official"]}">link</a>'
+            description += (
+                f'<br/>Official publisher <a href="{entry["official"]}">link</a>'
+            )
         fe.description(description)
-        fe.link(href=f"https://mangadex.org/chapter/{entry['chapter_id']}/1")
+        chapter_link = f"https://mangadex.org/chapter/{entry['chapter_id']}/1"
+        fe.link(href=chapter_link)
+        fe.guid(chapter_link)
+        fe.published(entry["created_at"])
     write_rss(fg)
     pickle.dump(cache, CACHE_PATH.open("wb"))
 
@@ -240,6 +248,7 @@ def write_rss(fg):
 
 
 def parse_tup_to_chapter(tup):
+    """Reverse the process of parsing a chapter to tuples"""
     return ".".join(str(x) for x in tup)
 
 
