@@ -49,20 +49,13 @@ def get_latest_chapter(session, manga_id):
         f"manga/{manga_id}/aggregate",
         params={"translatedLanguage[]": LANGUAGES[0]},
     )
+    logging.debug("Manga %s aggregate result:\n%s", manga_id, result)
     chapters = {}
-    for volume in result["volumes"].values():
+    for vol_id, volume in result["volumes"].items():
         for chapter_no in volume["chapters"]:
-            try:
-                chapters[parse_chapter_to_tup(chapter_no)] = volume["chapters"][
-                    chapter_no
-                ]["id"]
-            except ValueError:
-                logging.error(
-                    "Error parsing chapter %s of volume %s of" " manga with id %s",
-                    chapter_no,
-                    volume,
-                    manga_id,
-                )
+            chapters[parse_chapter_to_tup(chapter_no, vol_id, manga_id)] = volume["chapters"][
+                chapter_no
+            ]["id"]
     latest_chapter_no = max(chapters)
     return {
         "chapter_no": latest_chapter_no,
@@ -70,18 +63,23 @@ def get_latest_chapter(session, manga_id):
     }
 
 
-def parse_chapter_to_tup(txt):
-    if isinstance(txt, int) or isinstance(txt, tuple):
-        return txt
+def parse_chapter_to_tup(chapter_no, volume, manga_id):
+    if isinstance(chapter_no, int) or isinstance(chapter_no, tuple):
+        return chapter_no
     try:
-        return (int(txt),)
+        return (int(chapter_no),)
     except ValueError:
-        if "." in txt:
-            return tuple(int(x) for x in txt.split("."))
-        if txt == "none":  # At least one oneshot has this behavior
+        if "." in chapter_no:
+            return tuple(int(x) for x in chapter_no.split("."))
+        if chapter_no == "none":  # At least one oneshot has this behavior
             return (-1,)
         else:
-            raise
+            logging.error(
+                    "Error parsing chapter %s of volume %s of" " manga with id %s",
+                    chapter_no,
+                    volume,
+                    manga_id,
+                )
 
 
 def get_unread_manga(cache):
@@ -94,13 +92,13 @@ def get_unread_manga(cache):
         "user/follows/manga/feed",
         payload,
     )["data"]
-    logging.debug("Feed payload:\n%s", updates)
+    logging.debug("Feed result:\n%s", updates)
     results = []
     for update in updates:
-        chapter_no = parse_chapter_to_tup(update["attributes"]["chapter"])
         manga_id = next(
             r["id"] for r in update["relationships"] if r["type"] == "manga"
         )
+        chapter_no = parse_chapter_to_tup(update["attributes"]["chapter"], update["attributes"]["volume"], manga_id)
         chapter_id = update["id"]
         if chapter_id in cache["chapters"]:
             continue
