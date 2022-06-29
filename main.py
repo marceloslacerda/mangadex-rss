@@ -1,8 +1,8 @@
-from dataclasses import dataclass
 import os
 import pathlib
 import pickle
 import logging
+import hashlib
 import re
 from functools import total_ordering
 from typing import Tuple, Type
@@ -264,6 +264,22 @@ def get_session(username, password):
             raise
 
 
+def script_hash() -> bytes:
+    """Get the hash of this version of mangadex-rss"""
+    m = hashlib.md5()
+    with open("main.py", "rb") as f:
+        m.update(f.read())
+        return m.digest()
+
+
+def is_old_cache(cache: dict, hash_: bytes) -> bool:
+    """True if this version of mangadex-rss is old"""
+    try:
+        return cache["hash"] != hash_
+    except KeyError:
+        return True
+
+
 def main():
     fg = FeedGenerator()
     fg.id("https://mangadex.org/user/follows/manga/feed")
@@ -275,6 +291,10 @@ def main():
     logging.debug("Starting up")
     if CACHE_PATH.exists():
         cache = pickle.load(CACHE_PATH.open("rb"))
+        hash_ = script_hash()
+        if is_old_cache(cache, hash_):
+            logging.debug("Purging old cache")
+            cache = {"chapters": {}, "manga": {}, "page": 0, "hash": hash_}
     else:
         cache = {"chapters": {}, "manga": {}, "page": 0}
 
