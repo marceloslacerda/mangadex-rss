@@ -1,7 +1,11 @@
+from dataclasses import dataclass
 import os
 import pathlib
 import pickle
 import logging
+import re
+from functools import total_ordering
+from typing import Tuple, Type
 
 from urllib.parse import urljoin
 
@@ -32,11 +36,105 @@ LANGUAGES = list(
 )
 FETCH_LIMIT = os.environ.get("fetch_limit", 10)
 FEED_PATH = os.environ.get("feed_file", "rss.xml")
+MARK_OLD = os.environ.get("mark_old", False)
+
+
+@total_ordering
+class Chapter:
+    """Base chapter class"""
+
+    class Nothing:
+        """Placeholder class to prevent any instance to compare to it"""
+
+    dominant_class: Type["Chapter"] = Nothing
+
+    def __init__(self, contents: Tuple) -> None:
+        self.contents = contents
+
+    def __lt__(self, other) -> bool:
+        if isinstance(other, self.dominant_class):
+            return True
+        elif isinstance(other, self.__class__):
+            return self.contents < other.contents
+        else:
+            return False
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.contents == other.contents
+        else:
+            return False
+
+    def __hash__(self) -> int:
+        return hash(self.contents)
+
+
+class PairChapter(Chapter):
+    """Chapter in the form of x.y where x and y are numbers.
+    Instances of this class are ordered below NumberChapters and above everything else."""
+
+    def __init__(self, arg: str) -> None:
+        pair = arg.split(".")
+        if len(pair) != 2:
+            raise ValueError(f"{arg} is not a pair chapter")
+        self.first = int(pair[0])
+        self.last = int(pair[1])
+        super().__init__((self.first, self.last))
+
+    def __str__(self) -> str:
+        return f"{self.first}.{self.last}"
+
+
+class PartialNumberChapter(Chapter):
+    """Chapter that starts with a number but has some extra text.
+    Instances of this class are ordered below PairChapters and above StringChapters.
+    """
+
+    dominant_class = PairChapter
+
+    def __init__(self, arg: str) -> None:
+        match = re.match(r"(\d+)(.+)", arg)
+        if not match:
+            raise ValueError(f"{arg} is not a partial number chapter")
+        else:
+            self.number = int(match.group(1))
+            self.text = match.group(2)
+        super().__init__((self.number, self.text))
+
+    def __str__(self):
+        return f"{self.number}{self.text}"
+
+
+class NumberChapter(Chapter):
+    """Single number chapter."""
+
+    dominant_class = PartialNumberChapter
+
+    def __init__(self, arg: str) -> None:
+        self.value = int(arg)
+        super().__init__((self.value,))
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+class StringChapter(Chapter):
+    """Chapter that couldn't be parsed.
+    Always below other chapters."""
+
+    dominant_class = NumberChapter
+
+    def __init__(self, arg):
+        self.value = arg
+        super().__init__((self.value,))
+
+    def __str__(self) -> str:
+        return self.value
 
 
 def get_api_method(session, method, params=None):
     response = session.get(
-        urljoin(f"https://api.mangadex.org/", method),
+        urljoin("https://api.mangadex.org/", method),
         params=params,
     )
     response.raise_for_status()
@@ -53,9 +151,9 @@ def get_latest_chapter(session, manga_id):
     chapters = {}
     for vol_id, volume in result["volumes"].items():
         for chapter_no in volume["chapters"]:
-            chapters[parse_chapter_to_tup(chapter_no, vol_id, manga_id)] = volume["chapters"][
-                chapter_no
-            ]["id"]
+            chapters[parse_str_to_chapter(chapter_no, vol_id, manga_id)] = volume[
+                "chapters"
+            ][chapter_no]["id"]
     latest_chapter_no = max(chapters)
     return {
         "chapter_no": latest_chapter_no,
@@ -63,23 +161,19 @@ def get_latest_chapter(session, manga_id):
     }
 
 
-def parse_chapter_to_tup(chapter_no, volume, manga_id):
-    if isinstance(chapter_no, int) or isinstance(chapter_no, tuple):
-        return chapter_no
-    try:
-        return (int(chapter_no),)
-    except ValueError:
-        if "." in chapter_no:
-            return tuple(int(x) for x in chapter_no.split("."))
-        if chapter_no == "none":  # At least one oneshot has this behavior
-            return (-1,)
-        else:
-            logging.error(
-                    "Error parsing chapter %s of volume %s of" " manga with id %s",
-                    chapter_no,
-                    volume,
-                    manga_id,
-                )
+def parse_str_to_chapter(chapter_str, volume, manga_id) -> Chapter:
+    classes = (NumberChapter, PairChapter, PartialNumberChapter, StringChapter)
+    for class_ in classes:
+        try:
+            return class_(chapter_str)
+        except ValueError:
+            pass
+    logging.error(
+        "Error parsing chapter %s of volume %s of" " manga with id %s",
+        chapter_str,
+        volume,
+        manga_id,
+    )
 
 
 def get_unread_manga(cache):
@@ -98,7 +192,9 @@ def get_unread_manga(cache):
         manga_id = next(
             r["id"] for r in update["relationships"] if r["type"] == "manga"
         )
-        chapter_no = parse_chapter_to_tup(update["attributes"]["chapter"], update["attributes"]["volume"], manga_id)
+        chapter_no = parse_str_to_chapter(
+            update["attributes"]["chapter"], update["attributes"]["volume"], manga_id
+        )
         chapter_id = update["id"]
         if chapter_id in cache["chapters"]:
             continue
@@ -186,7 +282,7 @@ def main():
         fe = fg.add_entry()
         chapter_url = f"https://mangadex.org/chapter/{entry['chapter_id']}"
         fe.guid(chapter_url)
-        chapter_no_str = parse_tup_to_chapter(entry["chapter_no"])
+        chapter_no_str = str(entry["chapter_no"])
         title = f"Chapter {chapter_no_str} of {entry['manga_title']} released"
         if entry["chapter_vol"]:
             title = f"Volume {entry['chapter_vol']}, " + title
@@ -195,8 +291,8 @@ def main():
             chapter_title = f"'{entry['chapter_title']}'"
         else:
             chapter_title = chapter_no_str
-        if entry["latest_chapter"]["chapter_no"] > entry["chapter_no"]:
-            latest_chap_no = parse_tup_to_chapter(entry["latest_chapter"]["chapter_no"])
+        if entry["latest_chapter"]["chapter_no"] > entry["chapter_no"] and MARK_OLD:
+            latest_chap_no = str(entry["latest_chapter"]["chapter_no"])
             latest_chap_id = entry["latest_chapter"]["chapter_id"]
             description = (
                 f"An old chapter <a href='{chapter_url}'>{chapter_title}</a> of"
@@ -245,11 +341,6 @@ def write_rss(fg):
             feed_file.write(new_str)
     except FileNotFoundError:
         fg.rss_file(FEED_PATH)
-
-
-def parse_tup_to_chapter(tup):
-    """Reverse the process of parsing a chapter to tuples"""
-    return ".".join(str(x) for x in tup)
 
 
 if __name__ == "__main__":
