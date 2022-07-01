@@ -180,8 +180,11 @@ def parse_str_to_chapter(chapter_str, volume, manga_id) -> Chapter:
 def get_unread_manga(cache):
     session = get_session(USERNAME, PASSWORD)
     logging.debug("Session obtained")
-    payload = {"limit": FETCH_LIMIT, "order[createdAt]": "desc"}
-    payload.update({"translatedLanguage[]": language for language in LANGUAGES})
+    payload = [
+        ("limit", FETCH_LIMIT),
+        ("order[createdAt]", "desc"),
+    ]
+    payload.extend(("translatedLanguage[]", language) for language in LANGUAGES)
     updates = get_api_method(
         session,
         "user/follows/manga/feed",
@@ -227,6 +230,7 @@ def get_unread_manga(cache):
                 "latest_chapter": mdata["latest_chapter"],
                 "official": update["attributes"]["externalUrl"],
                 "created_at": chapdata["data"]["attributes"]["createdAt"],
+                "language": chapdata["data"]["attributes"]["translatedLanguage"]
             }
         )
     return results
@@ -290,14 +294,14 @@ def main():
     fg.subtitle("Mangadex User Feed")
     fg.language("en")
     logging.debug("Starting up")
+    hash_ = script_hash()
     if CACHE_PATH.exists():
         cache = pickle.load(CACHE_PATH.open("rb"))
-        hash_ = script_hash()
         if is_old_cache(cache, hash_):
             logging.debug("Purging old cache")
             cache = {"chapters": {}, "manga": {}, "page": 0, "hash": hash_}
     else:
-        cache = {"chapters": {}, "manga": {}, "page": 0}
+        cache = {"chapters": {}, "manga": {}, "page": 0, "hash": hash_}
 
     for entry in get_unread_manga(cache):
         fe = fg.add_entry()
@@ -331,6 +335,8 @@ def main():
             description += (
                 f'<br/>Official publisher <a href="{entry["official"]}">link</a>'
             )
+        if len(LANGUAGES) > 1:
+            fe.title(fe.title() + f' - Language [{entry["language"]}]')
         fe.description(description)
         chapter_link = f"https://mangadex.org/chapter/{entry['chapter_id']}/1"
         fe.link(href=chapter_link)
