@@ -19,8 +19,9 @@ logging.basicConfig(
     force=True,
 )
 
-CACHE_PATH = pathlib.Path("cache.bin")
-TOKEN_PATH = pathlib.Path("token.txt")
+PROJECT_PATH = pathlib.Path(__file__).resolve().parent
+CACHE_PATH = PROJECT_PATH / pathlib.Path("cache.bin")
+TOKEN_PATH = PROJECT_PATH / pathlib.Path("token.txt")
 try:
     USERNAME = os.environ["username"]
     PASSWORD = os.environ["password"]
@@ -35,7 +36,7 @@ LANGUAGES = list(
     l.strip() for l in os.environ.get("languages", "en").split(",") if l.strip()
 )
 FETCH_LIMIT = os.environ.get("fetch_limit", 10)
-FEED_PATH = os.environ.get("feed_file", "rss.xml")
+FEED_PATH = os.environ.get("feed_file", PROJECT_PATH / "rss.xml")
 MARK_OLD = os.environ.get("mark_old", False)
 
 
@@ -145,7 +146,7 @@ def get_latest_chapter(session, manga_id):
     result = get_api_method(
         session,
         f"manga/{manga_id}/aggregate",
-        params={"translatedLanguage[]": LANGUAGES[0]},
+        params={"translatedLanguage[]": language for language in LANGUAGES},
     )
     logging.debug("Manga %s aggregate result:\n%s", manga_id, result)
     chapters = {}
@@ -267,7 +268,7 @@ def get_session(username, password):
 def script_hash() -> bytes:
     """Get the hash of this version of mangadex-rss"""
     m = hashlib.md5()
-    with open("main.py", "rb") as f:
+    with open(__file__, "rb") as f:
         m.update(f.read())
         return m.digest()
 
