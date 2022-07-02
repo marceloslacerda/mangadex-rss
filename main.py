@@ -13,6 +13,8 @@ import requests
 
 from feedgen.feed import FeedGenerator
 
+NO_CHAPTER = -2
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=os.environ.get("loglevel", "WARNING"),
@@ -150,6 +152,11 @@ def get_latest_chapter(session, manga_id):
     )
     logging.debug("Manga %s aggregate result:\n%s", manga_id, result)
     chapters = {}
+    if not result["volumes"]:
+        return {
+            "chapter_no": NO_CHAPTER,
+            "chapter_id": None
+        }
     for vol_id, volume in result["volumes"].items():
         for chapter_no in volume["chapters"]:
             chapters[parse_str_to_chapter(chapter_no, vol_id, manga_id)] = volume[
