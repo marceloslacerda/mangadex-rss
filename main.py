@@ -153,15 +153,17 @@ def get_latest_chapter(session, manga_id):
     logging.debug("Manga %s aggregate result:\n%s", manga_id, result)
     chapters = {}
     if not result["volumes"]:
-        return {
-            "chapter_no": NO_CHAPTER,
-            "chapter_id": None
-        }
+        return {"chapter_no": NO_CHAPTER, "chapter_id": None}
     for vol_id, volume in result["volumes"].items():
         for chapter_no in volume["chapters"]:
-            chapters[parse_str_to_chapter(chapter_no, vol_id, manga_id)] = volume[
-                "chapters"
-            ][chapter_no]["id"]
+            if isinstance(chapter_no, dict):
+                chapters[
+                    parse_str_to_chapter(chapter_no["chapter"], vol_id, manga_id)
+                ] = chapter_no["id"]
+            else:
+                chapters[parse_str_to_chapter(chapter_no, vol_id, manga_id)] = volume[
+                    "chapters"
+                ][chapter_no]["id"]
     latest_chapter_no = max(chapters)
     return {
         "chapter_no": latest_chapter_no,
@@ -237,7 +239,7 @@ def get_unread_manga(cache):
                 "latest_chapter": mdata["latest_chapter"],
                 "official": update["attributes"]["externalUrl"],
                 "created_at": chapdata["data"]["attributes"]["createdAt"],
-                "language": chapdata["data"]["attributes"]["translatedLanguage"]
+                "language": chapdata["data"]["attributes"]["translatedLanguage"],
             }
         )
     return results
