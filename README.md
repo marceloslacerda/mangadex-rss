@@ -51,13 +51,13 @@ A [mangadex](https://mangadex.org/) rss generator for the new site (v5).
 
 I personally use a [cron](https://en.wikipedia.org/wiki/Cron) job that calls **mangadex-rss** every 5th minute of each hour.
 
-```
+```cron
 5 * * * * root /opt/mangadex-rss/md-rss
 ```
 
 The `md-rss` file is just an executable script that calls **mangadex-rss** with my credentials.
 
-```
+```bash
 #!/bin/sh -e
 cd "$(dirname $0)"
 . venv/bin/activate
