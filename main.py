@@ -338,7 +338,7 @@ def main():
             description = (
                 f"A new chapter <a href='{chapter_url}'>{chapter_title}</a> of"
                 f' <a href="https://mangadex.org/manga/{entry["manga_id"]}">{entry["manga_title"]}</a>'
-                "was released."
+                " was released."
             )
         if entry["official"]:
             description += (
