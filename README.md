@@ -45,7 +45,9 @@ A [mangadex](https://mangadex.org/) rss generator for the new site (v5).
  
  There are several ways to use the rss file, in my particular case I used [tt-rss](https://tt-rss.org/) on my personal vps.
  
- That might be too complicated or costly for most. Some rss readers might be able to open the file normally. I know that [liferea](https://lzone.de/liferea/) is not only capable of reading local rss files but is also will regularly check it for changes.
+ That might be too complicated or costly for most. Some rss readers might be able to open the file normally. I know that [liferea](https://lzone.de/liferea/) (example image below) is not only capable of reading local rss files but is also will regularly check it for changes, other readers might be able to do the same.
+ 
+ ![liferea subscription box for local file rss](https://msl09.com.br/images/Screenshot_2022-09-05_06-53-45.png "liferea file subscription window")
  
  # How do I keep updating the generated RSS?
 
