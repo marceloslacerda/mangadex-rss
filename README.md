@@ -35,3 +35,42 @@ A mangadex rss generator for the new site (v5)
    ```bash
    python main.py
    ```
+ 
+ ---
+ 
+ # How does it work?
+ 
+ It connects to [mangadex api](https://api.mangadex.org/docs/) using your credentials and pulls the latest changes to the manga you are following and turns that into a `RSS` that's written to the chosen `feed_file`.
+ 
+ # How do I use the generated file?
+ 
+ There are several ways to use the rss file in my particular case I used [tt-rss](https://tt-rss.org/) on my vps.
+ 
+ That might be too complicated or costly for most. Some rss readers might be able to open the file normally. I know that [liferea](https://lzone.de/liferea/) is not only capable of reading local rss files but is also will regularly check for changes.
+ 
+ # How do I keep updating the generated RSS?
+
+I personally use a [cron](https://en.wikipedia.org/wiki/Cron) job that calls **mangadex-rss** every 5th minute of each hour.
+
+```
+5 * * * * root /opt/mangadex-rss/md-rss
+```
+
+The `md-rss` file is just an executable script that calls **mangadex-rss** with my credentials.
+
+```
+#!/bin/sh -e
+cd "$(dirname $0)"
+. venv/bin/activate
+export username=...
+export password='...'
+export feed_file=/var/www/html/manga.rss
+python3 main.py
+```
+If you are going the route of running **mangadex-rss** on your local computer you might want to run the job from a user [cron job](https://geek-university.com/user-cron-jobs/).
+
+# Final notes
+
+For any other questions or suggestions, please open an issue and I'll try to respond to the best of my abilities.
+
+As usual, code contributions are welcome.
