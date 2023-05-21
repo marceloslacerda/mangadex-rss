@@ -74,7 +74,8 @@ class Chapter:
 
 class PairChapter(Chapter):
     """Chapter in the form of x.y where x and y are numbers.
-    Instances of this class are ordered below NumberChapters and above everything else."""
+    Instances of this class are ordered below NumberChapters and above everything else.
+    """
 
     def __init__(self, arg: str) -> None:
         pair = arg.split(".")
