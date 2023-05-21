@@ -140,7 +140,9 @@ def get_api_method(session, method, params=None):
         urljoin("https://api.mangadex.org/", method),
         params=params,
     )
-    response.raise_for_status()
+    if response.status_code >= 400:
+        logging.error(f"Failed request json: ${response.json()}")
+        response.raise_for_status()
     return response.json()
 
 
@@ -257,7 +259,7 @@ def get_session(username, password):
             response.raise_for_status()
             jwt = response.json()["token"]
             TOKEN_PATH.write_text(jwt["refresh"])
-            s.headers.update({"Authorization": jwt["session"]})
+            s.headers.update({"Authorization": "Bearer " + jwt["session"]})
             return s
         except requests.exceptions.HTTPError:
             print("Could not login to mangadex")
@@ -270,7 +272,7 @@ def get_session(username, password):
             )
             response.raise_for_status()
             jwt = response.json()["token"]
-            s.headers.update({"Authorization": jwt["session"]})
+            s.headers.update({"Authorization": "Bearer " + jwt["session"]})
             return s
         except requests.exceptions.HTTPError:
             print("Could not refresh the token. Try again later.")
