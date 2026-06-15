@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Python's virtual environment and mangadex-rss requirements preparation (do it only once):
+# Preparation (do it only once):
+#cp fetch-example.sh fetch.sh
 #python3 -m venv ./venv/
 #./bin/pip install -r requirements.txt
 
