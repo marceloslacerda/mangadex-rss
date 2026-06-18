@@ -35,39 +35,34 @@ A [mangadex](https://mangadex.org/) rss generator for the new site (v5).
    ```bash
    python main.py
    ```
- ---
+
+---
+
+For your convenience Albirew has made a wrapper script that you can use as
+a template in fetch-example.sh. Read the instructions in the file to set up
+a virtual environment.
+
+---
  
- # How does it work?
+# How does it work?
  
- It connects to [mangadex api](https://api.mangadex.org/docs/) using your credentials and pulls the latest changes to the manga you are following and turns that into a [RSS xml](https://www.rssboard.org/rss-specification) that's written to the chosen `feed_file`.
+It connects to [mangadex api](https://api.mangadex.org/docs/) using your credentials and pulls the latest changes to the manga you are following and turns that into a [RSS xml](https://www.rssboard.org/rss-specification) that's written to the chosen `feed_file`.
  
- # How do I use the generated file?
+# How do I use the generated file?
  
- There are several ways to use the rss file, in my particular case I used [tt-rss](https://tt-rss.org/) on my personal vps.
+There are several ways to use the rss file, in my particular case I used [tt-rss](https://tt-rss.org/) on my personal vps.
  
- That might be too complicated or costly for most. Some rss readers might be able to open the file normally. I know that [liferea](https://lzone.de/liferea/) (example image below) is not only capable of reading local rss files but is also will regularly check it for changes, other readers might be able to do the same.
+That might be too complicated or costly for most. Some rss readers might be able to open the file normally. I know that [liferea](https://lzone.de/liferea/) (example image below) is not only capable of reading local rss files but is also will regularly check it for changes, other readers might be able to do the same.
  
- ![liferea subscription box for local file rss](https://msl09.com.br/images/Screenshot_2022-09-05_06-53-45.png "liferea file subscription window")
  
- # How do I keep updating the generated RSS?
+# How do I keep updating the generated RSS?
 
 I personally use a [cron](https://en.wikipedia.org/wiki/Cron) job that calls **mangadex-rss** every 5th minute of each hour.
 
 ```cron
-5 * * * * root /opt/mangadex-rss/md-rss
+5 * * * * root /opt/mangadex-rss/fetch.sh
 ```
 
-The `md-rss` file is just an executable script that calls **mangadex-rss** with my credentials.
-
-```bash
-#!/bin/sh -e
-cd "$(dirname $0)"
-. venv/bin/activate
-export username=...
-export password='...'
-export feed_file=/var/www/html/manga.rss
-python3 main.py
-```
 If you are going the route of running **mangadex-rss** on your local computer you might want to run the job as a regular user [cron job](https://geek-university.com/user-cron-jobs/).
 
 # Final notes
